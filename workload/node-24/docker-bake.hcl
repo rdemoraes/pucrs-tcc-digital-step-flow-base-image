@@ -27,12 +27,12 @@ variable "BASE_IMAGE_VERSION" {
 
 function "major" {
   params = [version]
-  result = split(".", version)[0]
+  result = length(split(".", version)) > 0 ? split(".", version)[0] : version
 }
 
 function "minor" {
   params = [version]
-  result = join(".", slice(split(".", version), 0, 2))
+  result = length(split(".", version)) >= 2 ? join(".", slice(split(".", version), 0, 2)) : version
 }
 
 group "default" {

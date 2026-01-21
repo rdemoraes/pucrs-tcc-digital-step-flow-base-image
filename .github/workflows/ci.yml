@@ -26,24 +26,35 @@ jobs:
   build-workload-node24:
     name: Build Workload Node 24 Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create tags
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for tags
+          token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Extract version from tag or use default
-        id: version
+      - name: Configure Git
         run: |
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            # Remove 'v' prefix if present (v1.0.0 -> 1.0.0)
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            # For branches, use commit SHA as patch version
-            # Format: 0.0.<short-sha> (e.g., 0.0.abc1234)
-            VERSION="0.0.${GITHUB_SHA:0:7}"
-          fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Using version: ${VERSION}"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Determine version based on branch strategy
+        id: version
+        env:
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_HEAD_REF: ${{ github.event.head_ref }}
+          GITHUB_EVENT_PULL_REQUEST_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          source scripts/version.sh
+          determine_version \
+            "$GITHUB_REF_TYPE" \
+            "$GITHUB_REF" \
+            "$GITHUB_HEAD_REF" \
+            "$GITHUB_EVENT_PULL_REQUEST_HEAD_REF" \
+            "$GITHUB_REF_NAME"
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -79,24 +90,35 @@ jobs:
   build-cicd-runner:
     name: Build CI/CD Runner Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create tags
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for tags
+          token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Extract version from tag or use default
-        id: version
+      - name: Configure Git
         run: |
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            # Remove 'v' prefix if present (v1.0.0 -> 1.0.0)
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            # For branches, use commit SHA as patch version
-            # Format: 0.0.<short-sha> (e.g., 0.0.abc1234)
-            VERSION="0.0.${GITHUB_SHA:0:7}"
-          fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Using version: ${VERSION}"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Determine version based on branch strategy
+        id: version
+        env:
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_HEAD_REF: ${{ github.event.head_ref }}
+          GITHUB_EVENT_PULL_REQUEST_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          source scripts/version.sh
+          determine_version \
+            "$GITHUB_REF_TYPE" \
+            "$GITHUB_REF" \
+            "$GITHUB_HEAD_REF" \
+            "$GITHUB_EVENT_PULL_REQUEST_HEAD_REF" \
+            "$GITHUB_REF_NAME"
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
