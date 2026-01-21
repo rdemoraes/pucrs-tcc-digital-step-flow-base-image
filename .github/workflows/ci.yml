@@ -83,6 +83,11 @@ jobs:
             base_image.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
             base_image_dev.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}-dev
       
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          install-only: true
+      
       - name: Generate Trivy reports (HTML, XML, SBOM)
         run: |
           # Download templates
@@ -211,6 +216,11 @@ jobs:
             *.args.ALPINE_BASE_VERSION=${{ env.ALPINE_BASE_VERSION }}
             *.args.CICD_RUNNER_VERSION=${{ steps.version.outputs.version }}
             cicd_runner.tags=${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+      
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          install-only: true
       
       - name: Generate Trivy reports (HTML, XML, SBOM)
         run: |
