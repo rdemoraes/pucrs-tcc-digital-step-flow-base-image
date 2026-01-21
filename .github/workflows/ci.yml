@@ -95,28 +95,29 @@ jobs:
           trivyignores: ''
           skip-version-check: true
       
-      - name: Generate Trivy reports (HTML, XML, SBOM)
+      - name: Generate Trivy reports (HTML, SARIF, SBOM)
         run: |
           # Download HTML template
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/html.tpl
           
           trivy image --skip-version-check --format json --output trivy-image-base.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
           trivy image --skip-version-check --format template --template /tmp/html.tpl --output trivy-image-base.html ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --format junit --output trivy-image-base.xml ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --format sarif --output trivy-image-base.sarif ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
           trivy image --skip-version-check --format cyclonedx --output trivy-image-base-sbom.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
           echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-base.html"
-          echo "INFO: Scan completed. Result XML (Junit) output path $(pwd)/trivy-image-base.xml"
+          echo "INFO: Scan completed. Result SARIF output path $(pwd)/trivy-image-base.sarif"
           echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-base-sbom.json"
       
       - name: Upload Trivy reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: trivy-reports-base-image
+          name: trivy-reports-base-image-${{ steps.version.outputs.version }}
           path: |
             trivy-image-base.txt
+            trivy-image-base.json
             trivy-image-base.html
-            trivy-image-base.xml
+            trivy-image-base.sarif
             trivy-image-base-sbom.json
           retention-days: 30
 
@@ -188,27 +189,28 @@ jobs:
           trivyignores: ''
           skip-version-check: true
       
-      - name: Generate Trivy reports (HTML, XML, SBOM)
+      - name: Generate Trivy reports (HTML, SARIF, SBOM)
         run: |
           # Download HTML template
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/html.tpl
           
           trivy image --skip-version-check --format json --output trivy-image-cicd-runner.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
           trivy image --skip-version-check --format template --template /tmp/html.tpl --output trivy-image-cicd-runner.html ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --format junit --output trivy-image-cicd-runner.xml ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --format sarif --output trivy-image-cicd-runner.sarif ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
           trivy image --skip-version-check --format cyclonedx --output trivy-image-cicd-runner-sbom.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
           echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-cicd-runner.html"
-          echo "INFO: Scan completed. Result XML (Junit) output path $(pwd)/trivy-image-cicd-runner.xml"
+          echo "INFO: Scan completed. Result SARIF output path $(pwd)/trivy-image-cicd-runner.sarif"
           echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-cicd-runner-sbom.json"
       
       - name: Upload Trivy reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: trivy-reports-cicd-runner
+          name: trivy-reports-cicd-runner-${{ steps.version.outputs.version }}
           path: |
             trivy-image-cicd-runner.txt
+            trivy-image-cicd-runner.json
             trivy-image-cicd-runner.html
-            trivy-image-cicd-runner.xml
+            trivy-image-cicd-runner.sarif
             trivy-image-cicd-runner-sbom.json
           retention-days: 30
