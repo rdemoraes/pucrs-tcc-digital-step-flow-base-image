@@ -15,6 +15,7 @@ concurrency:
 
 env:
   REGISTRY: docker.io
+  REGISTRY_URL: dhi.io
   DOCKER_HUB_USERNAME: raphaelmoraes
   BASE_IMAGE: raphaelmoraes/digital-step-flow-base-node
   CICD_RUNNER_IMAGE: raphaelmoraes/digital-step-flow-cicd-runner
@@ -74,7 +75,7 @@ jobs:
           targets: base_image,base_image_dev
           push: true
           set: |
-            *.args.REGISTRY_URL=${{ env.REGISTRY }}
+            *.args.REGISTRY_URL=${{ env.REGISTRY_URL }}
             *.args.ALPINE_BASE_VERSION=${{ env.ALPINE_BASE_VERSION }}
             *.args.NODEJS_VERSION=${{ env.NODEJS_VERSION }}
             *.args.NPM_VERSION=${{ env.NPM_VERSION }}
@@ -142,7 +143,7 @@ jobs:
           targets: cicd_runner
           push: true
           set: |
-            *.args.REGISTRY_URL=${{ env.REGISTRY }}
+            *.args.REGISTRY_URL=${{ env.REGISTRY_URL }}
             *.args.ALPINE_BASE_VERSION=${{ env.ALPINE_BASE_VERSION }}
             *.args.CICD_RUNNER_VERSION=${{ steps.version.outputs.version }}
             cicd_runner.tags=${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
