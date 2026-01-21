@@ -63,9 +63,9 @@ target "base_image" {
     UID = "1000"
   }
   tags = [
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base:${BASE_IMAGE_VERSION}",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base:${major(BASE_IMAGE_VERSION)}",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base:${minor(BASE_IMAGE_VERSION)}"
+    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${BASE_IMAGE_VERSION}",
+    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${major(BASE_IMAGE_VERSION)}",
+    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${minor(BASE_IMAGE_VERSION)}"
   ]
   target = "base"
   pull = true
@@ -88,9 +88,9 @@ target "base_image_dev" {
     UID = "1000"
   }
   tags = [
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base:${BASE_IMAGE_VERSION}-dev",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base:${major(BASE_IMAGE_VERSION)}-dev",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base:${minor(BASE_IMAGE_VERSION)}-dev"
+    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${BASE_IMAGE_VERSION}-dev",
+    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${major(BASE_IMAGE_VERSION)}-dev",
+    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${minor(BASE_IMAGE_VERSION)}-dev"
   ]
   target = "base_dev"
   pull = true

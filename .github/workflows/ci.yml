@@ -16,7 +16,7 @@ concurrency:
 env:
   REGISTRY: docker.io
   DOCKER_HUB_USERNAME: raphaelmoraes
-  BASE_IMAGE: raphaelmoraes/digital-step-flow-base
+  BASE_IMAGE: raphaelmoraes/digital-step-flow-base-node
   CICD_RUNNER_IMAGE: raphaelmoraes/digital-step-flow-cicd-runner
   NODEJS_VERSION: 24.13.0-r0
   NPM_VERSION: 11.6.3-r0
@@ -59,9 +59,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
+      - name: Log in to dhi.io registry
+        run: |
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login dhi.io -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+      
       - name: Log in to Docker Hub
         run: |
-          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u raphaelmoraes --password-stdin
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
       
       - name: Build and push workload node24 image
         uses: docker/bake-action@v5
@@ -123,9 +127,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
+      - name: Log in to dhi.io registry
+        run: |
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login dhi.io -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+      
       - name: Log in to Docker Hub
         run: |
-          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u raphaelmoraes --password-stdin
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
       
       - name: Build and push CI/CD runner image
         uses: docker/bake-action@v5
