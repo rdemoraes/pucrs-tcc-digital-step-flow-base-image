@@ -87,10 +87,34 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-          format: 'sarif'
-          output: 'trivy-image-base.sarif'
+          format: 'table'
+          output: 'trivy-image-base.txt'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
+          scanners: 'vuln,secret'
+          trivyignores: ''
+      
+      - name: Generate Trivy reports (HTML, XML, SBOM)
+        run: |
+          trivy image --format json --output trivy-image-base.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --format template --template "@contrib/html.tpl" --output trivy-image-base.html ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --format junit --output trivy-image-base.xml ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --format cyclonedx --output trivy-image-base-sbom.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-base.html"
+          echo "INFO: Scan completed. Result XML (Junit) output path $(pwd)/trivy-image-base.xml"
+          echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-base-sbom.json"
+      
+      - name: Upload Trivy reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-reports-base-image
+          path: |
+            trivy-image-base.txt
+            trivy-image-base.html
+            trivy-image-base.xml
+            trivy-image-base-sbom.json
+          retention-days: 30
 
   build-cicd-runner:
     name: Build CI/CD Runner Image
@@ -152,7 +176,31 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
-          format: 'sarif'
-          output: 'trivy-image-cicd-runner.sarif'
+          format: 'table'
+          output: 'trivy-image-cicd-runner.txt'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
+          scanners: 'vuln,secret'
+          trivyignores: ''
+      
+      - name: Generate Trivy reports (HTML, XML, SBOM)
+        run: |
+          trivy image --format json --output trivy-image-cicd-runner.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --format template --template "@contrib/html.tpl" --output trivy-image-cicd-runner.html ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --format junit --output trivy-image-cicd-runner.xml ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --format cyclonedx --output trivy-image-cicd-runner-sbom.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-cicd-runner.html"
+          echo "INFO: Scan completed. Result XML (Junit) output path $(pwd)/trivy-image-cicd-runner.xml"
+          echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-cicd-runner-sbom.json"
+      
+      - name: Upload Trivy reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-reports-cicd-runner
+          path: |
+            trivy-image-cicd-runner.txt
+            trivy-image-cicd-runner.html
+            trivy-image-cicd-runner.xml
+            trivy-image-cicd-runner-sbom.json
+          retention-days: 30
