@@ -70,7 +70,7 @@ target "base_image" {
   target = "base"
   pull = true
   dockerfile = "Dockerfile"
-  context = "."
+  context = "workload/node-24"
   platforms = [
     "linux/amd64",
     "linux/arm64"
@@ -95,7 +95,7 @@ target "base_image_dev" {
   target = "base_dev"
   pull = true
   dockerfile = "Dockerfile"
-  context = "."
+  context = "workload/node-24"
   platforms = [
     "linux/amd64",
     "linux/arm64"

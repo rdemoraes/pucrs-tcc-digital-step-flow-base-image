@@ -59,7 +59,7 @@ target "cicd_runner" {
   target = "cicd_runner"
   pull = true
   dockerfile = "Dockerfile"
-  context = "."
+  context = "cicd-runner"
   platforms = [
     "linux/amd64",
     "linux/arm64"
