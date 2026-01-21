@@ -53,7 +53,7 @@ jobs:
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u raphaelmoraes --password-stdin
       
       - name: Build and push workload node24 image
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v5
         with:
           files: workload/node-24/docker-bake.hcl
           targets: base_image,base_image_dev
@@ -106,7 +106,7 @@ jobs:
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u raphaelmoraes --password-stdin
       
       - name: Build and push CI/CD runner image
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v5
         with:
           files: cicd-runner/docker-bake.hcl
           targets: cicd_runner
