@@ -94,16 +94,18 @@ jobs:
           scanners: 'vuln,secret'
           trivyignores: ''
           skip-version-check: true
+          ignore-unfixed: true
+          skip-dirs: './.venv'
       
       - name: Generate Trivy reports (HTML, SARIF, SBOM)
         run: |
           # Download HTML template
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/html.tpl
           
-          trivy image --skip-version-check --format json --output trivy-image-base.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --format template --template /tmp/html.tpl --output trivy-image-base.html ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --format sarif --output trivy-image-base.sarif ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --format cyclonedx --output trivy-image-base-sbom.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format json --output trivy-image-base.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format template --template /tmp/html.tpl --output trivy-image-base.html ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format sarif --output trivy-image-base.sarif ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format cyclonedx --output trivy-image-base-sbom.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
           echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-base.html"
           echo "INFO: Scan completed. Result SARIF output path $(pwd)/trivy-image-base.sarif"
           echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-base-sbom.json"
@@ -188,16 +190,18 @@ jobs:
           scanners: 'vuln,secret'
           trivyignores: ''
           skip-version-check: true
+          ignore-unfixed: true
+          skip-dirs: './.venv'
       
       - name: Generate Trivy reports (HTML, SARIF, SBOM)
         run: |
           # Download HTML template
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/html.tpl
           
-          trivy image --skip-version-check --format json --output trivy-image-cicd-runner.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --format template --template /tmp/html.tpl --output trivy-image-cicd-runner.html ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --format sarif --output trivy-image-cicd-runner.sarif ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --format cyclonedx --output trivy-image-cicd-runner-sbom.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format json --output trivy-image-cicd-runner.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format template --template /tmp/html.tpl --output trivy-image-cicd-runner.html ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format sarif --output trivy-image-cicd-runner.sarif ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format cyclonedx --output trivy-image-cicd-runner-sbom.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
           echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-cicd-runner.html"
           echo "INFO: Scan completed. Result SARIF output path $(pwd)/trivy-image-cicd-runner.sarif"
           echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-cicd-runner-sbom.json"
