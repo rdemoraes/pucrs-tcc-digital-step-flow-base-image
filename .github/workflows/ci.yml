@@ -83,6 +83,52 @@ jobs:
             base_image.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
             base_image_dev.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}-dev
       
+      - name: Generate Trivy reports (HTML, XML, SBOM)
+        run: |
+          # Download templates
+          mkdir -p /tmp/trivy-templates
+          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/trivy-templates/trivy-html.tpl
+          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/junit.tpl -o /tmp/trivy-templates/trivy-junit.tpl || echo "JUnit template not available, skipping XML report"
+          
+          # Output options (without exit code to ensure reports are generated)
+          TRIVY_OUTPUT_OPTS="--skip-version-check --scanners vuln --skip-dirs ./.venv --ignore-unfixed"
+          
+          # Generate HTML report
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base.html --format template --template /tmp/trivy-templates/trivy-html.tpl ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }} >/dev/null 2>outerr_html.log || rc_html=$?
+          if [[ ${rc_html:-0} -ne 0 && -f "./outerr_html.log" ]]; then
+            echo "ERROR: Failed to generate HTML report:" >&2
+            cat ./outerr_html.log >&2
+          else
+            echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-base.html"
+          fi
+          
+          # Generate XML (JUnit) report
+          if [[ -f /tmp/trivy-templates/trivy-junit.tpl ]]; then
+            trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base.xml --format template --template /tmp/trivy-templates/trivy-junit.tpl ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }} >/dev/null 2>outerr_xml.log || rc_xml=$?
+            if [[ ${rc_xml:-0} -ne 0 && -f "./outerr_xml.log" ]]; then
+              echo "ERROR: Failed to generate XML report:" >&2
+              cat ./outerr_xml.log >&2
+            else
+              echo "INFO: Scan completed. Result XML (Junit) output path $(pwd)/trivy-image-base.xml"
+            fi
+          fi
+          
+          # Generate SBOM report
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base-sbom.json --format cyclonedx ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }} >/dev/null 2>outerr_sbom.log || rc_sbom=$?
+          if [[ ${rc_sbom:-0} -ne 0 && -f "./outerr_sbom.log" ]]; then
+            echo "ERROR: Failed to generate SBOM report:" >&2
+            cat ./outerr_sbom.log >&2
+          else
+            echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-base-sbom.json"
+          fi
+          
+          # Generate JSON report
+          trivy image ${TRIVY_OUTPUT_OPTS} --format json --output trivy-image-base.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }} >/dev/null 2>outerr_json.log || rc_json=$?
+          if [[ ${rc_json:-0} -ne 0 && -f "./outerr_json.log" ]]; then
+            echo "ERROR: Failed to generate JSON report:" >&2
+            cat ./outerr_json.log >&2
+          fi
+      
       - name: Scan base image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
@@ -97,19 +143,6 @@ jobs:
           ignore-unfixed: true
           skip-dirs: './.venv'
       
-      - name: Generate Trivy reports (HTML, SARIF, SBOM)
-        run: |
-          # Download HTML template
-          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/html.tpl
-          
-          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format json --output trivy-image-base.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format template --template /tmp/html.tpl --output trivy-image-base.html ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format sarif --output trivy-image-base.sarif ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format cyclonedx --output trivy-image-base-sbom.json ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-          echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-base.html"
-          echo "INFO: Scan completed. Result SARIF output path $(pwd)/trivy-image-base.sarif"
-          echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-base-sbom.json"
-      
       - name: Upload Trivy reports
         uses: actions/upload-artifact@v4
         if: always()
@@ -119,7 +152,7 @@ jobs:
             trivy-image-base.txt
             trivy-image-base.json
             trivy-image-base.html
-            trivy-image-base.sarif
+            trivy-image-base.xml
             trivy-image-base-sbom.json
           retention-days: 30
 
@@ -179,6 +212,52 @@ jobs:
             *.args.CICD_RUNNER_VERSION=${{ steps.version.outputs.version }}
             cicd_runner.tags=${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
       
+      - name: Generate Trivy reports (HTML, XML, SBOM)
+        run: |
+          # Download templates
+          mkdir -p /tmp/trivy-templates
+          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/trivy-templates/trivy-html.tpl
+          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/junit.tpl -o /tmp/trivy-templates/trivy-junit.tpl || echo "JUnit template not available, skipping XML report"
+          
+          # Output options (without exit code to ensure reports are generated)
+          TRIVY_OUTPUT_OPTS="--skip-version-check --scanners vuln --skip-dirs ./.venv --ignore-unfixed"
+          
+          # Generate HTML report
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner.html --format template --template /tmp/trivy-templates/trivy-html.tpl ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }} >/dev/null 2>outerr_html.log || rc_html=$?
+          if [[ ${rc_html:-0} -ne 0 && -f "./outerr_html.log" ]]; then
+            echo "ERROR: Failed to generate HTML report:" >&2
+            cat ./outerr_html.log >&2
+          else
+            echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-cicd-runner.html"
+          fi
+          
+          # Generate XML (JUnit) report
+          if [[ -f /tmp/trivy-templates/trivy-junit.tpl ]]; then
+            trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner.xml --format template --template /tmp/trivy-templates/trivy-junit.tpl ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }} >/dev/null 2>outerr_xml.log || rc_xml=$?
+            if [[ ${rc_xml:-0} -ne 0 && -f "./outerr_xml.log" ]]; then
+              echo "ERROR: Failed to generate XML report:" >&2
+              cat ./outerr_xml.log >&2
+            else
+              echo "INFO: Scan completed. Result XML (Junit) output path $(pwd)/trivy-image-cicd-runner.xml"
+            fi
+          fi
+          
+          # Generate SBOM report
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner-sbom.json --format cyclonedx ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }} >/dev/null 2>outerr_sbom.log || rc_sbom=$?
+          if [[ ${rc_sbom:-0} -ne 0 && -f "./outerr_sbom.log" ]]; then
+            echo "ERROR: Failed to generate SBOM report:" >&2
+            cat ./outerr_sbom.log >&2
+          else
+            echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-cicd-runner-sbom.json"
+          fi
+          
+          # Generate JSON report
+          trivy image ${TRIVY_OUTPUT_OPTS} --format json --output trivy-image-cicd-runner.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }} >/dev/null 2>outerr_json.log || rc_json=$?
+          if [[ ${rc_json:-0} -ne 0 && -f "./outerr_json.log" ]]; then
+            echo "ERROR: Failed to generate JSON report:" >&2
+            cat ./outerr_json.log >&2
+          fi
+      
       - name: Scan CI/CD runner image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
@@ -193,19 +272,6 @@ jobs:
           ignore-unfixed: true
           skip-dirs: './.venv'
       
-      - name: Generate Trivy reports (HTML, SARIF, SBOM)
-        run: |
-          # Download HTML template
-          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/html.tpl
-          
-          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format json --output trivy-image-cicd-runner.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format template --template /tmp/html.tpl --output trivy-image-cicd-runner.html ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format sarif --output trivy-image-cicd-runner.sarif ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
-          trivy image --skip-version-check --scanners vuln --skip-dirs "./.venv" --format cyclonedx --output trivy-image-cicd-runner-sbom.json ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
-          echo "INFO: Scan completed. Result HTML output path $(pwd)/trivy-image-cicd-runner.html"
-          echo "INFO: Scan completed. Result SARIF output path $(pwd)/trivy-image-cicd-runner.sarif"
-          echo "INFO: Scan completed. Result SBOM output path $(pwd)/trivy-image-cicd-runner-sbom.json"
-      
       - name: Upload Trivy reports
         uses: actions/upload-artifact@v4
         if: always()
@@ -215,6 +281,6 @@ jobs:
             trivy-image-cicd-runner.txt
             trivy-image-cicd-runner.json
             trivy-image-cicd-runner.html
-            trivy-image-cicd-runner.sarif
+            trivy-image-cicd-runner.xml
             trivy-image-cicd-runner-sbom.json
           retention-days: 30
