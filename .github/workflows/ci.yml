@@ -1,0 +1,127 @@
+name: CI Pipeline - Base Images
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*.*.*'  # Semantic versioning tags: v1.0.0, v1.2.3, etc.
+  pull_request:
+    branches: [ main, develop ]
+
+# Prevent workflow from running on commits with [skip ci] or [ci skip]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: docker.io
+  DOCKER_HUB_USERNAME: raphaelmoraes
+  BASE_IMAGE: raphaelmoraes/digital-step-flow-base
+  CICD_RUNNER_IMAGE: raphaelmoraes/digital-step-flow-cicd-runner
+  NODEJS_VERSION: 24.13.0-r0
+  NPM_VERSION: 11.6.3-r0
+  ALPINE_BASE_VERSION: 3.23-alpine3.23-dev
+
+jobs:
+  build-workload-node24:
+    name: Build Workload Node 24 Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for tags
+      
+      - name: Extract version from tag or use default
+        id: version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Remove 'v' prefix if present (v1.0.0 -> 1.0.0)
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            # For branches, use commit SHA as patch version
+            # Format: 0.0.<short-sha> (e.g., 0.0.abc1234)
+            VERSION="0.0.${GITHUB_SHA:0:7}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Using version: ${VERSION}"
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u raphaelmoraes --password-stdin
+      
+      - name: Build and push workload node24 image
+        uses: docker/bake-action@v4
+        with:
+          files: workload/node-24/docker-bake.hcl
+          targets: base_image,base_image_dev
+          push: true
+          set: |
+            *.args.REGISTRY_URL=${{ env.REGISTRY }}
+            *.args.ALPINE_BASE_VERSION=${{ env.ALPINE_BASE_VERSION }}
+            *.args.NODEJS_VERSION=${{ env.NODEJS_VERSION }}
+            *.args.NPM_VERSION=${{ env.NPM_VERSION }}
+            *.args.BASE_IMAGE_VERSION=${{ steps.version.outputs.version }}
+            base_image.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+            base_image_dev.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}-dev
+      
+      - name: Scan base image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          format: 'sarif'
+          output: 'trivy-image-base.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+  build-cicd-runner:
+    name: Build CI/CD Runner Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for tags
+      
+      - name: Extract version from tag or use default
+        id: version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Remove 'v' prefix if present (v1.0.0 -> 1.0.0)
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            # For branches, use commit SHA as patch version
+            # Format: 0.0.<short-sha> (e.g., 0.0.abc1234)
+            VERSION="0.0.${GITHUB_SHA:0:7}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Using version: ${VERSION}"
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u raphaelmoraes --password-stdin
+      
+      - name: Build and push CI/CD runner image
+        uses: docker/bake-action@v4
+        with:
+          files: cicd-runner/docker-bake.hcl
+          targets: cicd_runner
+          push: true
+          set: |
+            *.args.REGISTRY_URL=${{ env.REGISTRY }}
+            *.args.ALPINE_BASE_VERSION=${{ env.ALPINE_BASE_VERSION }}
+            *.args.CICD_RUNNER_VERSION=${{ steps.version.outputs.version }}
+            cicd_runner.tags=${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+      
+      - name: Scan CI/CD runner image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          format: 'sarif'
+          output: 'trivy-image-cicd-runner.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
