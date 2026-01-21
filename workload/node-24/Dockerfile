@@ -39,8 +39,8 @@ RUN apk add --upgrade --no-cache \
       bzip2-dev \
       diffutils \
       gcc \
-      ld-linux \
-      libffi \
+      libc-dev \
+      libffi-dev \
       libtool \
       shadow \
       make \
@@ -48,7 +48,6 @@ RUN apk add --upgrade --no-cache \
       wget \
       git \
       jq \
-      yq \
       zlib-dev && \
     rm -rf /var/cache/apk/*
 
