@@ -94,14 +94,13 @@ jobs:
           docker pull ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
       
       - name: Generate Trivy reports (HTML, XML, SBOM)
+        env:
+          IMAGE_REF: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
         run: |
           # Download templates
           mkdir -p /tmp/trivy-templates
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/trivy-templates/trivy-html.tpl
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/junit.tpl -o /tmp/trivy-templates/trivy-junit.tpl || echo "JUnit template not available, skipping XML report"
-          
-          # Set image reference
-          IMAGE_REF="${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}"
           
           # Output options (without exit code to ensure reports are generated)
           TRIVY_OUTPUT_OPTS="--skip-version-check --scanners vuln --skip-dirs ./.venv --ignore-unfixed"
@@ -236,14 +235,13 @@ jobs:
           docker pull ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
       
       - name: Generate Trivy reports (HTML, XML, SBOM)
+        env:
+          IMAGE_REF: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
         run: |
           # Download templates
           mkdir -p /tmp/trivy-templates
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/trivy-templates/trivy-html.tpl
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/junit.tpl -o /tmp/trivy-templates/trivy-junit.tpl || echo "JUnit template not available, skipping XML report"
-          
-          # Set image reference
-          IMAGE_REF="${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}"
           
           # Output options (without exit code to ensure reports are generated)
           TRIVY_OUTPUT_OPTS="--skip-version-check --scanners vuln --skip-dirs ./.venv --ignore-unfixed"
