@@ -1,6 +1,6 @@
 ARG REGISTRY_URL="dhi.io"
 ARG ALPINE_BASE_VERSION="3.23-alpine3.23-dev"
-ARG NODEJS_VERSION="24.13.0-r0"
+ARG NODEJS_VERSION="24.13.0-r1"
 ARG NPM_VERSION="11.6.3-r0"
 ARG GID="1000"
 ARG UID="1000"
@@ -26,7 +26,17 @@ RUN apk add --upgrade --no-cache \
       busybox \
       perl \
       ca-certificates && \
-    rm -rf /var/cache/apk/*
+    rm -rf /var/cache/apk/* && \
+    # Verify versions
+    NODE_VERSION=$(node --version | sed 's/v//') && \
+    NPM_VERSION=$(npm --version) && \
+    echo "Installed Node.js: ${NODE_VERSION}" && \
+    echo "Installed npm: ${NPM_VERSION}" && \
+    # Verify we have Node.js 24.13.0
+    if ! echo "${NODE_VERSION}" | grep -q "^24\.13\.0"; then \
+      echo "ERROR: Expected Node.js 24.13.0, got ${NODE_VERSION}"; \
+      exit 1; \
+    fi
 
 FROM base AS base_dev
 

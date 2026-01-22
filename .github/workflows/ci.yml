@@ -19,7 +19,7 @@ env:
   DOCKER_HUB_USERNAME: raphaelmoraes
   BASE_IMAGE: raphaelmoraes/digital-step-flow-base-node
   CICD_RUNNER_IMAGE: raphaelmoraes/digital-step-flow-cicd-runner
-  NODEJS_VERSION: 24.13.0-r0
+  NODEJS_VERSION: 24.13.0-r1
   NPM_VERSION: 11.6.3-r0
   ALPINE_BASE_VERSION: 3.23-alpine3.23-dev
 

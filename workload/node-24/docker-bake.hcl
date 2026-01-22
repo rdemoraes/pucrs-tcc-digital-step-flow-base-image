@@ -11,7 +11,7 @@ variable "ALPINE_BASE_VERSION" {
 }
 
 variable "NODEJS_VERSION" {
-  default = "24.13.0-r0"
+  default = "24.13.0-r1"
 }
 
 variable "NPM_VERSION" {
