@@ -97,6 +97,15 @@ jobs:
         env:
           IMAGE_REF: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
         run: |
+          # Validate IMAGE_REF is set
+          if [[ -z "${IMAGE_REF}" ]]; then
+            echo "ERROR: IMAGE_REF is empty!" >&2
+            echo "BASE_IMAGE: ${{ env.BASE_IMAGE }}" >&2
+            echo "VERSION: ${{ steps.version.outputs.version }}" >&2
+            exit 1
+          fi
+          echo "INFO: Scanning image: ${IMAGE_REF}"
+          
           # Download templates
           mkdir -p /tmp/trivy-templates
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/trivy-templates/trivy-html.tpl
@@ -106,7 +115,7 @@ jobs:
           TRIVY_OUTPUT_OPTS="--skip-version-check --scanners vuln --skip-dirs ./.venv --ignore-unfixed"
           
           # Generate HTML report
-          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base.html --format template --template /tmp/trivy-templates/trivy-html.tpl ${IMAGE_REF} >/dev/null 2>outerr_html.log || rc_html=$?
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base.html --format template --template /tmp/trivy-templates/trivy-html.tpl "${IMAGE_REF}" >/dev/null 2>outerr_html.log || rc_html=$?
           if [[ ${rc_html:-0} -ne 0 && -f "./outerr_html.log" ]]; then
             echo "ERROR: Failed to generate HTML report:" >&2
             cat ./outerr_html.log >&2
@@ -116,7 +125,7 @@ jobs:
           
           # Generate XML (JUnit) report
           if [[ -f /tmp/trivy-templates/trivy-junit.tpl ]]; then
-            trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base.xml --format template --template /tmp/trivy-templates/trivy-junit.tpl ${IMAGE_REF} >/dev/null 2>outerr_xml.log || rc_xml=$?
+            trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base.xml --format template --template /tmp/trivy-templates/trivy-junit.tpl "${IMAGE_REF}" >/dev/null 2>outerr_xml.log || rc_xml=$?
             if [[ ${rc_xml:-0} -ne 0 && -f "./outerr_xml.log" ]]; then
               echo "ERROR: Failed to generate XML report:" >&2
               cat ./outerr_xml.log >&2
@@ -126,7 +135,7 @@ jobs:
           fi
           
           # Generate SBOM report
-          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base-sbom.json --format cyclonedx ${IMAGE_REF} >/dev/null 2>outerr_sbom.log || rc_sbom=$?
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base-sbom.json --format cyclonedx "${IMAGE_REF}" >/dev/null 2>outerr_sbom.log || rc_sbom=$?
           if [[ ${rc_sbom:-0} -ne 0 && -f "./outerr_sbom.log" ]]; then
             echo "ERROR: Failed to generate SBOM report:" >&2
             cat ./outerr_sbom.log >&2
@@ -135,7 +144,7 @@ jobs:
           fi
           
           # Generate JSON report
-          trivy image ${TRIVY_OUTPUT_OPTS} --format json --output trivy-image-base.json ${IMAGE_REF} >/dev/null 2>outerr_json.log || rc_json=$?
+          trivy image ${TRIVY_OUTPUT_OPTS} --format json --output trivy-image-base.json "${IMAGE_REF}" >/dev/null 2>outerr_json.log || rc_json=$?
           if [[ ${rc_json:-0} -ne 0 && -f "./outerr_json.log" ]]; then
             echo "ERROR: Failed to generate JSON report:" >&2
             cat ./outerr_json.log >&2
@@ -238,6 +247,15 @@ jobs:
         env:
           IMAGE_REF: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
         run: |
+          # Validate IMAGE_REF is set
+          if [[ -z "${IMAGE_REF}" ]]; then
+            echo "ERROR: IMAGE_REF is empty!" >&2
+            echo "CICD_RUNNER_IMAGE: ${{ env.CICD_RUNNER_IMAGE }}" >&2
+            echo "VERSION: ${{ steps.version.outputs.version }}" >&2
+            exit 1
+          fi
+          echo "INFO: Scanning image: ${IMAGE_REF}"
+          
           # Download templates
           mkdir -p /tmp/trivy-templates
           curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/trivy-templates/trivy-html.tpl
@@ -247,7 +265,7 @@ jobs:
           TRIVY_OUTPUT_OPTS="--skip-version-check --scanners vuln --skip-dirs ./.venv --ignore-unfixed"
           
           # Generate HTML report
-          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner.html --format template --template /tmp/trivy-templates/trivy-html.tpl ${IMAGE_REF} >/dev/null 2>outerr_html.log || rc_html=$?
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner.html --format template --template /tmp/trivy-templates/trivy-html.tpl "${IMAGE_REF}" >/dev/null 2>outerr_html.log || rc_html=$?
           if [[ ${rc_html:-0} -ne 0 && -f "./outerr_html.log" ]]; then
             echo "ERROR: Failed to generate HTML report:" >&2
             cat ./outerr_html.log >&2
@@ -257,7 +275,7 @@ jobs:
           
           # Generate XML (JUnit) report
           if [[ -f /tmp/trivy-templates/trivy-junit.tpl ]]; then
-            trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner.xml --format template --template /tmp/trivy-templates/trivy-junit.tpl ${IMAGE_REF} >/dev/null 2>outerr_xml.log || rc_xml=$?
+            trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner.xml --format template --template /tmp/trivy-templates/trivy-junit.tpl "${IMAGE_REF}" >/dev/null 2>outerr_xml.log || rc_xml=$?
             if [[ ${rc_xml:-0} -ne 0 && -f "./outerr_xml.log" ]]; then
               echo "ERROR: Failed to generate XML report:" >&2
               cat ./outerr_xml.log >&2
@@ -267,7 +285,7 @@ jobs:
           fi
           
           # Generate SBOM report
-          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner-sbom.json --format cyclonedx ${IMAGE_REF} >/dev/null 2>outerr_sbom.log || rc_sbom=$?
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner-sbom.json --format cyclonedx "${IMAGE_REF}" >/dev/null 2>outerr_sbom.log || rc_sbom=$?
           if [[ ${rc_sbom:-0} -ne 0 && -f "./outerr_sbom.log" ]]; then
             echo "ERROR: Failed to generate SBOM report:" >&2
             cat ./outerr_sbom.log >&2
@@ -276,7 +294,7 @@ jobs:
           fi
           
           # Generate JSON report
-          trivy image ${TRIVY_OUTPUT_OPTS} --format json --output trivy-image-cicd-runner.json ${IMAGE_REF} >/dev/null 2>outerr_json.log || rc_json=$?
+          trivy image ${TRIVY_OUTPUT_OPTS} --format json --output trivy-image-cicd-runner.json "${IMAGE_REF}" >/dev/null 2>outerr_json.log || rc_json=$?
           if [[ ${rc_json:-0} -ne 0 && -f "./outerr_json.log" ]]; then
             echo "ERROR: Failed to generate JSON report:" >&2
             cat ./outerr_json.log >&2
