@@ -150,26 +150,54 @@ jobs:
             cat ./outerr_json.log >&2
           fi
       
-      - name: Validate image reference before Trivy scan
+      - name: Validate and prepare image reference for Trivy
+        id: prepare_trivy_image
         run: |
+          echo "=== Debug Information ==="
+          echo "BASE_IMAGE (env): '${{ env.BASE_IMAGE }}'"
+          echo "VERSION (step output): '${{ steps.version.outputs.version }}'"
+          echo "Current directory: $(pwd)"
+          
           BASE_IMAGE="${{ env.BASE_IMAGE }}"
           VERSION="${{ steps.version.outputs.version }}"
           
-          echo "BASE_IMAGE: '${BASE_IMAGE}'"
-          echo "VERSION: '${VERSION}'"
-          
-          if [[ -z "${BASE_IMAGE}" ]] || [[ -z "${VERSION}" ]]; then
-            echo "ERROR: BASE_IMAGE or VERSION is empty!" >&2
+          # Validate BASE_IMAGE
+          if [[ -z "${BASE_IMAGE}" ]]; then
+            echo "ERROR: BASE_IMAGE is empty!" >&2
             exit 1
           fi
           
+          # Validate VERSION
+          if [[ -z "${VERSION}" ]]; then
+            echo "ERROR: VERSION is empty! Check if version step completed successfully." >&2
+            echo "Version step outputs:" >&2
+            echo "  version: '${{ steps.version.outputs.version }}'" >&2
+            exit 1
+          fi
+          
+          # Construct IMAGE_REF with proper format: repository/image:tag
           IMAGE_REF="${BASE_IMAGE}:${VERSION}"
-          echo "IMAGE_REF: '${IMAGE_REF}'"
+          
+          # Validate IMAGE_REF format
+          if [[ ! "${IMAGE_REF}" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]]; then
+            echo "ERROR: IMAGE_REF has invalid format: '${IMAGE_REF}'" >&2
+            echo "Expected format: repository/image:tag" >&2
+            exit 1
+          fi
+          
+          # Check for invalid characters
+          if [[ "${IMAGE_REF}" =~ [[:space:]] ]]; then
+            echo "ERROR: IMAGE_REF contains spaces: '${IMAGE_REF}'" >&2
+            exit 1
+          fi
+          
+          echo "Validated IMAGE_REF: '${IMAGE_REF}'"
+          echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
       
       - name: Scan base image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          image-ref: ${{ steps.prepare_trivy_image.outputs.image_ref }}
           format: 'table'
           output: 'trivy-image-base.txt'
           severity: 'CRITICAL,HIGH'
@@ -316,26 +344,54 @@ jobs:
             cat ./outerr_json.log >&2
           fi
       
-      - name: Validate image reference before Trivy scan
+      - name: Validate and prepare image reference for Trivy
+        id: prepare_trivy_image
         run: |
+          echo "=== Debug Information ==="
+          echo "CICD_RUNNER_IMAGE (env): '${{ env.CICD_RUNNER_IMAGE }}'"
+          echo "VERSION (step output): '${{ steps.version.outputs.version }}'"
+          echo "Current directory: $(pwd)"
+          
           CICD_RUNNER_IMAGE="${{ env.CICD_RUNNER_IMAGE }}"
           VERSION="${{ steps.version.outputs.version }}"
           
-          echo "CICD_RUNNER_IMAGE: '${CICD_RUNNER_IMAGE}'"
-          echo "VERSION: '${VERSION}'"
-          
-          if [[ -z "${CICD_RUNNER_IMAGE}" ]] || [[ -z "${VERSION}" ]]; then
-            echo "ERROR: CICD_RUNNER_IMAGE or VERSION is empty!" >&2
+          # Validate CICD_RUNNER_IMAGE
+          if [[ -z "${CICD_RUNNER_IMAGE}" ]]; then
+            echo "ERROR: CICD_RUNNER_IMAGE is empty!" >&2
             exit 1
           fi
           
+          # Validate VERSION
+          if [[ -z "${VERSION}" ]]; then
+            echo "ERROR: VERSION is empty! Check if version step completed successfully." >&2
+            echo "Version step outputs:" >&2
+            echo "  version: '${{ steps.version.outputs.version }}'" >&2
+            exit 1
+          fi
+          
+          # Construct IMAGE_REF with proper format: repository/image:tag
           IMAGE_REF="${CICD_RUNNER_IMAGE}:${VERSION}"
-          echo "IMAGE_REF: '${IMAGE_REF}'"
+          
+          # Validate IMAGE_REF format
+          if [[ ! "${IMAGE_REF}" =~ ^[a-zA-Z0-9._/-]+:[a-zA-Z0-9._-]+$ ]]; then
+            echo "ERROR: IMAGE_REF has invalid format: '${IMAGE_REF}'" >&2
+            echo "Expected format: repository/image:tag" >&2
+            exit 1
+          fi
+          
+          # Check for invalid characters
+          if [[ "${IMAGE_REF}" =~ [[:space:]] ]]; then
+            echo "ERROR: IMAGE_REF contains spaces: '${IMAGE_REF}'" >&2
+            exit 1
+          fi
+          
+          echo "Validated IMAGE_REF: '${IMAGE_REF}'"
+          echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
       
       - name: Scan CI/CD runner image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+          image-ref: ${{ steps.prepare_trivy_image.outputs.image_ref }}
           format: 'table'
           output: 'trivy-image-cicd-runner.txt'
           severity: 'CRITICAL,HIGH'
