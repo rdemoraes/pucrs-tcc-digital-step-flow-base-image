@@ -99,7 +99,18 @@ jobs:
           severity: 'CRITICAL,HIGH'
           scanners: 'vuln'
           skip-dirs: './.venv'
-          output: 'trivy-image-base.txt'
+      
+      - name: Save Trivy table output to file
+        run: |
+          trivy image \
+            --skip-version-check \
+            --scanners vuln \
+            --skip-dirs "./.venv" \
+            --ignore-unfixed \
+            --format table \
+            --severity CRITICAL,HIGH \
+            --output trivy-image-base.txt \
+            '${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}' || true
       
       - name: Generate Trivy reports (HTML, XML, SBOM, JSON)
         env:
@@ -238,11 +249,22 @@ jobs:
           image-ref: '${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}'
           format: 'table'
           exit-code: '0'
-          # ignore-unfixed: true
-          # vuln-type: 'os,library'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH,MEDIUM'
-          # scanners: 'vuln'
-          # output: 'trivy-image-cicd-runner.txt'
+          scanners: 'vuln'
+      
+      - name: Save Trivy table output to file
+        run: |
+          trivy image \
+            --skip-version-check \
+            --scanners vuln \
+            --skip-dirs "./.venv" \
+            --ignore-unfixed \
+            --format table \
+            --severity CRITICAL,HIGH,MEDIUM \
+            --output trivy-image-cicd-runner.txt \
+            '${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}' || true
       
       - name: Generate Trivy reports (HTML, XML, SBOM, JSON)
         env:
