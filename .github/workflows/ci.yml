@@ -80,8 +80,6 @@ jobs:
             *.args.NODEJS_VERSION=${{ env.NODEJS_VERSION }}
             *.args.NPM_VERSION=${{ env.NPM_VERSION }}
             *.args.BASE_IMAGE_VERSION=${{ steps.version.outputs.version }}
-            base_image.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
-            base_image_dev.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}-dev
       
       - name: Pull image for scanning
         run: |
