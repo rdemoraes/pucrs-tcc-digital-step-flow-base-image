@@ -63,6 +63,7 @@ target "base_image" {
     UID = "1000"
   }
   tags = [
+    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${NODEJS_VERSION}",
     "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${BASE_IMAGE_VERSION}",
     "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${major(BASE_IMAGE_VERSION)}",
     "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${minor(BASE_IMAGE_VERSION)}"
