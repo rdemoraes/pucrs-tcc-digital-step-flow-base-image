@@ -24,9 +24,31 @@ env:
   ALPINE_BASE_VERSION: 3.23-alpine3.23-dev
 
 jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      workload-node24: ${{ steps.filter.outputs.workload-node24 }}
+      cicd-runner: ${{ steps.filter.outputs.cicd-runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            workload-node24:
+              - 'workload/node-24/**'
+            cicd-runner:
+              - 'cicd-runner/**'
+
   build-workload-node24:
     name: Build Workload Node 24 Image
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.workload-node24 == 'true' || github.event_name == 'push' && github.ref_type == 'tag'
     permissions:
       contents: write  # Required to create tags
     steps:
@@ -183,6 +205,8 @@ jobs:
   build-cicd-runner:
     name: Build CI/CD Runner Image
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.cicd-runner == 'true' || github.event_name == 'push' && github.ref_type == 'tag'
     permissions:
       contents: write  # Required to create tags
     steps:
