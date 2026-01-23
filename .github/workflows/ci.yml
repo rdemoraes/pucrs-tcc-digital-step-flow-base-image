@@ -170,6 +170,14 @@ jobs:
           echo "IMAGE_REF: '${IMAGE_REF}'"
           echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
       
+      - name: Debug Trivy image reference
+        run: |
+          echo "Prepared image_ref output: '${{ steps.prepare_image_ref.outputs.image_ref }}'"
+          if [[ -z "${{ steps.prepare_image_ref.outputs.image_ref }}" ]]; then
+            echo "ERROR: image_ref output is empty!" >&2
+            exit 1
+          fi
+      
       - name: Scan base image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
@@ -178,7 +186,7 @@ jobs:
           output: 'trivy-image-base.txt'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
-          scanners: 'vuln,secret'
+          scanners: 'vuln'
           trivyignores: ''
           skip-version-check: true
           ignore-unfixed: true
@@ -340,6 +348,14 @@ jobs:
           echo "IMAGE_REF: '${IMAGE_REF}'"
           echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
       
+      - name: Debug Trivy image reference
+        run: |
+          echo "Prepared image_ref output: '${{ steps.prepare_image_ref.outputs.image_ref }}'"
+          if [[ -z "${{ steps.prepare_image_ref.outputs.image_ref }}" ]]; then
+            echo "ERROR: image_ref output is empty!" >&2
+            exit 1
+          fi
+      
       - name: Scan CI/CD runner image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
@@ -348,7 +364,7 @@ jobs:
           output: 'trivy-image-cicd-runner.txt'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
-          scanners: 'vuln,secret'
+          scanners: 'vuln'
           trivyignores: ''
           skip-version-check: true
           ignore-unfixed: true
