@@ -83,17 +83,25 @@ jobs:
             base_image.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
             base_image_dev.tags=${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}-dev
       
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          install-only: true
-      
       - name: Pull image for scanning
         run: |
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
           docker pull ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
       
-      - name: Generate Trivy reports (HTML, XML, SBOM)
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: '${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          scanners: 'vuln'
+          skip-dirs: './.venv'
+          output: 'trivy-image-base.txt'
+      
+      - name: Generate Trivy reports (HTML, XML, SBOM, JSON)
         env:
           IMAGE_REF: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
         run: |
@@ -149,39 +157,6 @@ jobs:
             echo "ERROR: Failed to generate JSON report:" >&2
             cat ./outerr_json.log >&2
           fi
-      
-      - name: Scan base image with Trivy
-        run: |
-          BASE_IMAGE="${{ env.BASE_IMAGE }}"
-          VERSION="${{ steps.version.outputs.version }}"
-          
-          # Validate inputs
-          if [[ -z "${BASE_IMAGE}" ]] || [[ -z "${VERSION}" ]]; then
-            echo "ERROR: BASE_IMAGE or VERSION is empty!" >&2
-            echo "BASE_IMAGE: '${BASE_IMAGE}'" >&2
-            echo "VERSION: '${VERSION}'" >&2
-            exit 1
-          fi
-          
-          # Construct IMAGE_REF
-          IMAGE_REF="${BASE_IMAGE}:${VERSION}"
-          echo "Scanning image: ${IMAGE_REF}"
-          
-          # Ensure image is available locally
-          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
-          docker pull "${IMAGE_REF}" || echo "Warning: Failed to pull image, may already be local"
-          
-          # Run Trivy scan
-          trivy image \
-            --skip-version-check \
-            --scanners vuln \
-            --skip-dirs "./.venv" \
-            --ignore-unfixed \
-            --format table \
-            --output trivy-image-base.txt \
-            --severity CRITICAL,HIGH \
-            --exit-code 1 \
-            "${IMAGE_REF}"
       
       - name: Upload Trivy reports
         uses: actions/upload-artifact@v4
@@ -252,17 +227,25 @@ jobs:
             *.args.CICD_RUNNER_VERSION=${{ steps.version.outputs.version }}
             cicd_runner.tags=${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
       
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          install-only: true
-      
       - name: Pull image for scanning
         run: |
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
           docker pull ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
       
-      - name: Generate Trivy reports (HTML, XML, SBOM)
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: '${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          scanners: 'vuln'
+          skip-dirs: './.venv'
+          output: 'trivy-image-cicd-runner.txt'
+      
+      - name: Generate Trivy reports (HTML, XML, SBOM, JSON)
         env:
           IMAGE_REF: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
         run: |
@@ -318,39 +301,6 @@ jobs:
             echo "ERROR: Failed to generate JSON report:" >&2
             cat ./outerr_json.log >&2
           fi
-      
-      - name: Scan CI/CD runner image with Trivy
-        run: |
-          CICD_RUNNER_IMAGE="${{ env.CICD_RUNNER_IMAGE }}"
-          VERSION="${{ steps.version.outputs.version }}"
-          
-          # Validate inputs
-          if [[ -z "${CICD_RUNNER_IMAGE}" ]] || [[ -z "${VERSION}" ]]; then
-            echo "ERROR: CICD_RUNNER_IMAGE or VERSION is empty!" >&2
-            echo "CICD_RUNNER_IMAGE: '${CICD_RUNNER_IMAGE}'" >&2
-            echo "VERSION: '${VERSION}'" >&2
-            exit 1
-          fi
-          
-          # Construct IMAGE_REF
-          IMAGE_REF="${CICD_RUNNER_IMAGE}:${VERSION}"
-          echo "Scanning image: ${IMAGE_REF}"
-          
-          # Ensure image is available locally
-          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
-          docker pull "${IMAGE_REF}" || echo "Warning: Failed to pull image, may already be local"
-          
-          # Run Trivy scan
-          trivy image \
-            --skip-version-check \
-            --scanners vuln \
-            --skip-dirs "./.venv" \
-            --ignore-unfixed \
-            --format table \
-            --output trivy-image-cicd-runner.txt \
-            --severity CRITICAL,HIGH \
-            --exit-code 1 \
-            "${IMAGE_REF}"
       
       - name: Upload Trivy reports
         uses: actions/upload-artifact@v4
