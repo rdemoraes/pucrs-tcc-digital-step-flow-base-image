@@ -150,7 +150,7 @@ jobs:
             cat ./outerr_json.log >&2
           fi
       
-      - name: Prepare image reference for Trivy
+      - name: Validate image reference before Trivy scan
         run: |
           BASE_IMAGE="${{ env.BASE_IMAGE }}"
           VERSION="${{ steps.version.outputs.version }}"
@@ -160,21 +160,16 @@ jobs:
           
           if [[ -z "${BASE_IMAGE}" ]] || [[ -z "${VERSION}" ]]; then
             echo "ERROR: BASE_IMAGE or VERSION is empty!" >&2
-            echo "BASE_IMAGE: '${BASE_IMAGE}'" >&2
-            echo "VERSION: '${VERSION}'" >&2
             exit 1
           fi
           
           IMAGE_REF="${BASE_IMAGE}:${VERSION}"
           echo "IMAGE_REF: '${IMAGE_REF}'"
-          echo "TRIVY_IMAGE_REF=${IMAGE_REF}" >> $GITHUB_ENV
       
       - name: Scan base image with Trivy
         uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_IMAGE_REF: ${{ env.TRIVY_IMAGE_REF }}
         with:
-          image-ref: ${{ env.TRIVY_IMAGE_REF }}
+          image-ref: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
           format: 'table'
           output: 'trivy-image-base.txt'
           severity: 'CRITICAL,HIGH'
@@ -321,7 +316,7 @@ jobs:
             cat ./outerr_json.log >&2
           fi
       
-      - name: Prepare image reference for Trivy
+      - name: Validate image reference before Trivy scan
         run: |
           CICD_RUNNER_IMAGE="${{ env.CICD_RUNNER_IMAGE }}"
           VERSION="${{ steps.version.outputs.version }}"
@@ -331,21 +326,16 @@ jobs:
           
           if [[ -z "${CICD_RUNNER_IMAGE}" ]] || [[ -z "${VERSION}" ]]; then
             echo "ERROR: CICD_RUNNER_IMAGE or VERSION is empty!" >&2
-            echo "CICD_RUNNER_IMAGE: '${CICD_RUNNER_IMAGE}'" >&2
-            echo "VERSION: '${VERSION}'" >&2
             exit 1
           fi
           
           IMAGE_REF="${CICD_RUNNER_IMAGE}:${VERSION}"
           echo "IMAGE_REF: '${IMAGE_REF}'"
-          echo "TRIVY_IMAGE_REF=${IMAGE_REF}" >> $GITHUB_ENV
       
       - name: Scan CI/CD runner image with Trivy
         uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_IMAGE_REF: ${{ env.TRIVY_IMAGE_REF }}
         with:
-          image-ref: ${{ env.TRIVY_IMAGE_REF }}
+          image-ref: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
           format: 'table'
           output: 'trivy-image-cicd-runner.txt'
           severity: 'CRITICAL,HIGH'
