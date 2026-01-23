@@ -24,31 +24,9 @@ env:
   ALPINE_BASE_VERSION: 3.23-alpine3.23-dev
 
 jobs:
-  detect-changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    outputs:
-      workload-node24: ${{ steps.filter.outputs.workload-node24 }}
-      cicd-runner: ${{ steps.filter.outputs.cicd-runner }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            workload-node24:
-              - 'workload/node-24/**'
-            cicd-runner:
-              - 'cicd-runner/**'
-
   build-workload-node24:
     name: Build Workload Node 24 Image
     runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.workload-node24 == 'true' || github.event_name == 'push' && github.ref_type == 'tag'
     permissions:
       contents: write  # Required to create tags
     steps:
@@ -57,7 +35,15 @@ jobs:
           fetch-depth: 0  # Fetch all history for tags
           token: ${{ secrets.GITHUB_TOKEN }}
       
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            workload-node24:
+              - 'workload/node-24/**'
+      
       - name: Configure Git
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -78,19 +64,33 @@ jobs:
             "$GITHUB_HEAD_REF" \
             "$GITHUB_EVENT_PULL_REQUEST_HEAD_REF" \
             "$GITHUB_REF_NAME"
+          echo "Determined version: ${{ steps.version.outputs.version }}"
       
       - name: Set up Docker Buildx
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         uses: docker/setup-buildx-action@v3
       
       - name: Log in to dhi.io registry
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login dhi.io -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
       
       - name: Log in to Docker Hub
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
       
+      - name: Validate version
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
+        run: |
+          if [[ -z "${{ steps.version.outputs.version }}" ]]; then
+            echo "ERROR: Version is empty!" >&2
+            exit 1
+          fi
+          echo "Building with version: ${{ steps.version.outputs.version }}"
+      
       - name: Build and push workload node24 image
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         uses: docker/bake-action@v5
         with:
           files: workload/node-24/docker-bake.hcl
@@ -104,11 +104,13 @@ jobs:
             *.args.BASE_IMAGE_VERSION=${{ steps.version.outputs.version }}
       
       - name: Pull image for scanning
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
           docker pull ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
       
       - name: Run Trivy vulnerability scanner
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: '${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}'
@@ -121,6 +123,7 @@ jobs:
           skip-dirs: './.venv'
       
       - name: Save Trivy table output to file
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           trivy image \
             --skip-version-check \
@@ -133,6 +136,7 @@ jobs:
             '${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}' || true
       
       - name: Generate Trivy reports (HTML, XML, SBOM, JSON)
+        if: steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         env:
           IMAGE_REF: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
         run: |
@@ -190,8 +194,8 @@ jobs:
           fi
       
       - name: Upload Trivy reports
+        if: (steps.filter.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')) && always()
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: trivy-reports-base-image-${{ steps.version.outputs.version }}
           path: |
@@ -205,8 +209,6 @@ jobs:
   build-cicd-runner:
     name: Build CI/CD Runner Image
     runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.cicd-runner == 'true' || github.event_name == 'push' && github.ref_type == 'tag'
     permissions:
       contents: write  # Required to create tags
     steps:
@@ -215,7 +217,15 @@ jobs:
           fetch-depth: 0  # Fetch all history for tags
           token: ${{ secrets.GITHUB_TOKEN }}
       
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            cicd-runner:
+              - 'cicd-runner/**'
+      
       - name: Configure Git
+        if: steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -236,19 +246,24 @@ jobs:
             "$GITHUB_HEAD_REF" \
             "$GITHUB_EVENT_PULL_REQUEST_HEAD_REF" \
             "$GITHUB_REF_NAME"
+          echo "Determined version: ${{ steps.version.outputs.version }}"
       
       - name: Set up Docker Buildx
+        if: steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         uses: docker/setup-buildx-action@v3
       
       - name: Log in to dhi.io registry
+        if: steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login dhi.io -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
       
       - name: Log in to Docker Hub
+        if: steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
       
       - name: Build and push CI/CD runner image
+        if: steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         uses: docker/bake-action@v5
         with:
           files: cicd-runner/docker-bake.hcl
@@ -261,11 +276,13 @@ jobs:
             cicd_runner.tags=${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
       
       - name: Pull image for scanning
+        if: steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
           docker pull ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
       
       - name: Run Trivy vulnerability scanner
+        if: steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: '${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}'
@@ -277,6 +294,7 @@ jobs:
           scanners: 'vuln'
       
       - name: Save Trivy table output to file
+        if: steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         run: |
           trivy image \
             --skip-version-check \
@@ -289,6 +307,7 @@ jobs:
             '${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}' || true
       
       - name: Generate Trivy reports (HTML, XML, SBOM, JSON)
+        if: steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
         env:
           IMAGE_REF: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
         run: |
@@ -346,8 +365,8 @@ jobs:
           fi
       
       - name: Upload Trivy reports
+        if: (steps.filter.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')) && always()
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: trivy-reports-cicd-runner-${{ steps.version.outputs.version }}
           path: |

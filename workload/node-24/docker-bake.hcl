@@ -35,6 +35,24 @@ function "minor" {
   result = length(split(".", version)) >= 2 ? join(".", slice(split(".", version), 0, 2)) : version
 }
 
+function "version_tags" {
+  params = [username, version]
+  result = version != "" && length(split(".", version)) >= 2 ? [
+    "${username}/digital-step-flow-base-node:${version}",
+    "${username}/digital-step-flow-base-node:${major(version)}",
+    "${username}/digital-step-flow-base-node:${minor(version)}"
+  ] : []
+}
+
+function "version_tags_dev" {
+  params = [username, version]
+  result = version != "" && length(split(".", version)) >= 2 ? [
+    "${username}/digital-step-flow-base-node:${version}-dev",
+    "${username}/digital-step-flow-base-node:${major(version)}-dev",
+    "${username}/digital-step-flow-base-node:${minor(version)}-dev"
+  ] : []
+}
+
 group "default" {
   targets = [
     "base_image",
@@ -62,12 +80,10 @@ target "base_image" {
     GID = "1000"
     UID = "1000"
   }
-  tags = [
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${NODEJS_VERSION}",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${BASE_IMAGE_VERSION}",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${major(BASE_IMAGE_VERSION)}",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${minor(BASE_IMAGE_VERSION)}"
-  ]
+  tags = concat(
+    ["${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${NODEJS_VERSION}"],
+    version_tags(DOCKER_HUB_USERNAME, BASE_IMAGE_VERSION)
+  )
   target = "base"
   pull = true
   dockerfile = "Dockerfile"
@@ -88,12 +104,10 @@ target "base_image_dev" {
     GID = "1000"
     UID = "1000"
   }
-  tags = [
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${NODEJS_VERSION}-dev",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${BASE_IMAGE_VERSION}-dev",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${major(BASE_IMAGE_VERSION)}-dev",
-    "${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${minor(BASE_IMAGE_VERSION)}-dev"
-  ]
+  tags = concat(
+    ["${DOCKER_HUB_USERNAME}/digital-step-flow-base-node:${NODEJS_VERSION}-dev"],
+    version_tags_dev(DOCKER_HUB_USERNAME, BASE_IMAGE_VERSION)
+  )
   target = "base_dev"
   pull = true
   dockerfile = "Dockerfile"
