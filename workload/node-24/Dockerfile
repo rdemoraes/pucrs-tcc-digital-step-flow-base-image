@@ -19,6 +19,9 @@ RUN addgroup --gid "$GID" appuser && \
             --ingroup "appuser" \
             --uid "${UID}" appuser
 
+# Upgrade all packages (including libssl/libcrypto from base) to latest security fixes
+RUN apk upgrade --no-cache
+
 # Install Node.js and npm with specific versions
 RUN apk add --upgrade --no-cache \
       nodejs=${NODEJS_VERSION} \
