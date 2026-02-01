@@ -77,23 +77,30 @@ jobs:
           echo "Building with version: ${{ steps.version.outputs.version }}"
 
       - name: Build and push workload node24 image
-        uses: docker/bake-action@v5
-        with:
-          files: workload/node-24/docker-bake.hcl
-          targets: base_image,base_image_dev
-          push: true
-          set: |
-            *.args.REGISTRY_URL=${{ env.REGISTRY_URL }}
-            *.args.ALPINE_BASE_VERSION=${{ env.ALPINE_BASE_VERSION }}
-            *.args.NODEJS_VERSION=${{ env.NODEJS_VERSION }}
-            *.args.NPM_VERSION=${{ env.NPM_VERSION }}
-            *.args.BASE_IMAGE_VERSION=${{ steps.version.outputs.version }}
+        id: build-push
+        run: |
+          docker buildx bake \
+            -f workload/node-24/docker-bake.hcl \
+            base_image base_image_dev \
+            --set '*.args.REGISTRY_URL=${{ env.REGISTRY_URL }}' \
+            --set '*.args.ALPINE_BASE_VERSION=${{ env.ALPINE_BASE_VERSION }}' \
+            --set '*.args.NODEJS_VERSION=${{ env.NODEJS_VERSION }}' \
+            --set '*.args.NPM_VERSION=${{ env.NPM_VERSION }}' \
+            --set '*.args.BASE_IMAGE_VERSION=${{ steps.version.outputs.version }}' \
+            --push \
+            2>&1 | tee build.log
 
-      - name: Get image digest
+      - name: Get image digest from build output
         id: digest
         run: |
-          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
-          DIGEST=$(docker buildx imagetools inspect "${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}" 2>&1 | grep -E '^Digest:' | sed 's/Digest: *//')
+          # Digest from the push we just did (avoids stale digest from imagetools inspect)
+          VERSION="${{ steps.version.outputs.version }}"
+          DIGEST=$(grep "pushing manifest for" build.log | grep -F "${VERSION}" | grep -oE 'sha256:[a-f0-9]+' | tail -1)
+          if [[ -z "${DIGEST}" ]]; then
+            echo "ERROR: Could not extract digest from build.log for version ${VERSION}" >&2
+            grep 'pushing manifest' build.log || true
+            exit 1
+          fi
           echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
           echo "Image digest: ${DIGEST}"
 
