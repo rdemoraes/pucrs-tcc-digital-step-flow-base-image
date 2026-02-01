@@ -23,6 +23,9 @@ jobs:
   build:
     name: Build Workload Node 24 Image
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      digest: ${{ steps.digest.outputs.digest }}
     permissions:
       contents: write
     steps:
@@ -86,10 +89,19 @@ jobs:
             *.args.NPM_VERSION=${{ env.NPM_VERSION }}
             *.args.BASE_IMAGE_VERSION=${{ steps.version.outputs.version }}
 
+      - name: Get image digest
+        id: digest
+        run: |
+          echo "Logging in to Docker Hub to inspect image..."
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+          DIGEST=$(docker buildx imagetools inspect "${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}" --format '{{.Digest}}')
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "Image digest: ${DIGEST}"
+
       - name: Output image version
         run: |
           echo "IMAGE_VERSION=${{ steps.version.outputs.version }}" >> $GITHUB_ENV
-          echo "Built image: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}"
+          echo "Built image: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}@${{ steps.digest.outputs.digest }}"
 
   trivy-scan:
     name: Trivy Vulnerability Scan
@@ -98,35 +110,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Determine version based on branch strategy
-        id: version
-        env:
-          GITHUB_REF_TYPE: ${{ github.ref_type }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_HEAD_REF: ${{ github.event.head_ref }}
-          GITHUB_EVENT_PULL_REQUEST_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-        run: |
-          source scripts/version.sh
-          determine_version \
-            "$GITHUB_REF_TYPE" \
-            "$GITHUB_REF" \
-            "$GITHUB_HEAD_REF" \
-            "$GITHUB_EVENT_PULL_REQUEST_HEAD_REF" \
-            "$GITHUB_REF_NAME"
-
       - name: Log in to Docker Hub
         run: |
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
 
-      - name: Pull image for scanning
+      - name: Pull image for scanning (by digest to ensure we scan the image that was just built)
         run: |
-          docker pull ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          docker pull ${{ env.BASE_IMAGE }}@${{ needs.build.outputs.digest }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.33.1
         with:
-          image-ref: '${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}'
+          image-ref: '${{ env.BASE_IMAGE }}@${{ needs.build.outputs.digest }}'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
@@ -145,11 +140,11 @@ jobs:
             --format table \
             --severity CRITICAL,HIGH \
             --output trivy-image-base.txt \
-            '${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}' || true
+            '${{ env.BASE_IMAGE }}@${{ needs.build.outputs.digest }}' || true
 
       - name: Generate Trivy reports (HTML, XML, SBOM, JSON)
         env:
-          IMAGE_REF: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}
+          IMAGE_REF: ${{ env.BASE_IMAGE }}@${{ needs.build.outputs.digest }}
         run: |
           if [[ -z "${IMAGE_REF}" ]]; then
             echo "ERROR: IMAGE_REF is empty!" >&2
@@ -169,7 +164,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: trivy-reports-base-image-${{ steps.version.outputs.version }}
+          name: trivy-reports-base-image-${{ needs.build.outputs.version }}
           path: |
             trivy-image-base.txt
             trivy-image-base.json

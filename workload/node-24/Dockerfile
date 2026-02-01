@@ -32,14 +32,12 @@ RUN apk add --upgrade --no-cache \
       perl \
       ca-certificates && \
     rm -rf /var/cache/apk/* && \
-    # Verify versions
-    NODE_VERSION=$(node --version | sed 's/v//') && \
-    NPM_VERSION=$(npm --version) && \
-    echo "Installed Node.js: ${NODE_VERSION}" && \
-    echo "Installed npm: ${NPM_VERSION}" && \
-    # Verify we have Node.js 24.13.0
-    if ! echo "${NODE_VERSION}" | grep -q "^24\.13\.0"; then \
-      echo "ERROR: Expected Node.js 24.13.0, got ${NODE_VERSION}"; \
+    NODE_VER=$(node --version | sed 's/v//' | tr -d ' \n\r') && \
+    NPM_VER=$(npm --version | tr -d ' \n\r') && \
+    echo "Installed Node.js: ${NODE_VER}" && \
+    echo "Installed npm: ${NPM_VER}" && \
+    if ! echo "${NODE_VER}" | grep -q '^24\.13\.0'; then \
+      echo "ERROR: Expected Node.js 24.13.0, got ${NODE_VER}"; \
       exit 1; \
     fi
 
