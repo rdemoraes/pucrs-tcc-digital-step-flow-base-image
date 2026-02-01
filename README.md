@@ -2,31 +2,41 @@
 
 Repositório para imagens base reutilizáveis do Digital Step Flow.
 
+## Imagens base e segurança
+
+Todas as imagens deste repositório são construídas a partir de **imagens base reforçadas (hardened images)** para reduzir a superfície de ataque e aumentar a confiabilidade da aplicação. A imagem base utilizada é o [Alpine Base](https://hub.docker.com/hardened-images/catalog/dhi/alpine-base) do catálogo Docker Hardened Images (`dhi.io/alpine-base`), que oferece uma base Alpine Linux mínima e segura, com suporte a padrões como CIS, FIPS e STIG quando aplicável.
+
+- **Catálogo Docker Hardened Images (Alpine Base):** [hub.docker.com/hardened-images/catalog/dhi/alpine-base](https://hub.docker.com/hardened-images/catalog/dhi/alpine-base)
+
+Os detalhes técnicos de construção, versionamento e publicação estão documentados neste repositório e nos repositórios que consomem essas imagens.
+
 ## Estrutura
 
-Este repositório contém duas imagens base:
+Este repositório contém duas imagens, ambas derivadas da imagem hardened `dhi.io/alpine-base`:
 
 ### 1. Workload Node.js 24 (`workload/node-24/`)
 
-Imagem base para workloads Node.js 24:
+Imagem base para **workloads da aplicação** (backend e frontend):
+- **Base:** `dhi.io/alpine-base` (hardened image)
 - Node.js v24.13.0
 - npm 11.6.3
 - Usuário não-root (appuser)
 
-**Imagem Docker**: `raphaelmoraes/digital-step-flow-base:<version>`
+É a imagem utilizada pelos Dockerfiles do backend e do frontend da solução (`FROM raphaelmoraes/digital-step-flow-base-node:...`).
+
+**Imagem Docker:** `raphaelmoraes/digital-step-flow-base-node:<version>` (prod) e `:<version>-dev` (desenvolvimento)
 
 ### 2. CI/CD Runner (`cicd-runner/`)
 
-Imagem para execução de pipelines CI/CD:
-- Docker CLI
-- kubectl
-- kustomize
-- GitHub CLI
-- Trivy
-- Argo CD CLI
-- Git e outras ferramentas
+Imagem para **execução de pipelines CI/CD** (ex.: jobs de deploy no GitHub Actions):
+- **Base:** `dhi.io/alpine-base` (hardened image)
+- Docker CLI, kubectl, kustomize
+- GitHub CLI, Trivy, Argo CD CLI
+- Git, bash, curl, jq, yq
 
-**Imagem Docker**: `raphaelmoraes/digital-step-flow-cicd-runner:<version>`
+Contempla as ferramentas necessárias para build, push, atualização de manifests Kubernetes e demais etapas de CI/CD. Os workflows de deploy (backend e frontend) utilizam esta imagem como container dos jobs que atualizam os manifests de dev/prod.
+
+**Imagem Docker:** `raphaelmoraes/digital-step-flow-cicd-runner:<version>`
 
 ## Desenvolvimento / Como contribuir
 

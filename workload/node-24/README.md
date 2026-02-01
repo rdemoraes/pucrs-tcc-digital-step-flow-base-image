@@ -2,9 +2,12 @@
 
 Imagem base reutilizável para workloads Node.js 24 do Digital Step Flow.
 
+Esta imagem é construída a partir da **imagem base reforçada (hardened image)** [Alpine Base](https://hub.docker.com/hardened-images/catalog/dhi/alpine-base) do catálogo Docker Hardened Images (`dhi.io/alpine-base`), utilizada como base para os workloads da aplicação (backend e frontend), com o objetivo de reduzir a superfície de ataque e aumentar a confiabilidade.
+
 ## Descrição
 
 Esta imagem base contém:
+- **Base:** `dhi.io/alpine-base` (hardened image)
 - Node.js v24.13.0
 - npm 11.6.3
 - Usuário não-root (appuser)

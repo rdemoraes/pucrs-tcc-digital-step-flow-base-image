@@ -2,9 +2,11 @@
 
 Imagem Docker para execução de pipelines CI/CD do Digital Step Flow.
 
+Esta imagem é construída a partir da **imagem base reforçada (hardened image)** [Alpine Base](https://hub.docker.com/hardened-images/catalog/dhi/alpine-base) do catálogo Docker Hardened Images (`dhi.io/alpine-base`). É utilizada nos jobs de GitHub Actions (por exemplo, deploy e atualização de manifests Kubernetes) e contempla a instalação das ferramentas necessárias para CI/CD.
+
 ## Descrição
 
-Esta imagem contém ferramentas essenciais para pipelines CI/CD:
+**Base:** `dhi.io/alpine-base` (hardened image). Ferramentas essenciais para pipelines CI/CD:
 - Docker CLI
 - kubectl
 - kustomize
