@@ -46,6 +46,18 @@ Contempla as ferramentas necessárias para build, push, atualização de manifes
 
 ## Build
 
+Antes de construir as imagens localmente, faça login no registro da imagem base (as imagens são construídas a partir de `dhi.io/alpine-base`):
+
+```bash
+docker login dhi.io
+```
+
+Se for fazer push das imagens para Docker Hub, faça login também:
+
+```bash
+docker login
+```
+
 ### Build Individual
 
 ```bash
