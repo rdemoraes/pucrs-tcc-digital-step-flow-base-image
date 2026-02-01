@@ -3,8 +3,7 @@ name: CI Pipeline - CI/CD Runner
 on:
   push:
     branches: [ main, develop ]
-    tags:
-      - 'v*.*.*'
+    paths: [ 'cicd-runner/**' ]
   pull_request:
     branches: [ main, develop ]
     paths: [ 'cicd-runner/**' ]
@@ -19,27 +18,9 @@ env:
   ALPINE_BASE_VERSION: 3.23-alpine3.23-dev
 
 jobs:
-  detect-changes:
-    name: Detect path changes
-    runs-on: ubuntu-latest
-    outputs:
-      cicd-runner: ${{ steps.filter.outputs.cicd-runner }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            cicd-runner:
-              - 'cicd-runner/**'
-
   build:
     name: Build CI/CD Runner Image
     runs-on: ubuntu-latest
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
     permissions:
       contents: write
     steps:

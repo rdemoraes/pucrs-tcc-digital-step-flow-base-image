@@ -3,8 +3,7 @@ name: CI Pipeline - Workload Node 24
 on:
   push:
     branches: [ main, develop ]
-    tags:
-      - 'v*.*.*'
+    paths: [ 'workload/node-24/**' ]
   pull_request:
     branches: [ main, develop ]
     paths: [ 'workload/node-24/**' ]
@@ -21,27 +20,9 @@ env:
   ALPINE_BASE_VERSION: 3.23-alpine3.23-dev
 
 jobs:
-  detect-changes:
-    name: Detect path changes
-    runs-on: ubuntu-latest
-    outputs:
-      workload-node24: ${{ steps.filter.outputs.workload-node24 }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            workload-node24:
-              - 'workload/node-24/**'
-
   build:
     name: Build Workload Node 24 Image
     runs-on: ubuntu-latest
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.workload-node24 == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
     permissions:
       contents: write
     steps:
