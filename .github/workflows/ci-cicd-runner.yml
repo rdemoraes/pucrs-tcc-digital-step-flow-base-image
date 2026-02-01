@@ -1,0 +1,187 @@
+name: CI Pipeline - CI/CD Runner
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: [ main, develop ]
+    paths: [ 'cicd-runner/**' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY_URL: dhi.io
+  CICD_RUNNER_IMAGE: raphaelmoraes/digital-step-flow-cicd-runner
+  ALPINE_BASE_VERSION: 3.23-alpine3.23-dev
+
+jobs:
+  detect-changes:
+    name: Detect path changes
+    runs-on: ubuntu-latest
+    outputs:
+      cicd-runner: ${{ steps.filter.outputs.cicd-runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            cicd-runner:
+              - 'cicd-runner/**'
+
+  build:
+    name: Build CI/CD Runner Image
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.cicd-runner == 'true' || (github.event_name == 'push' && github.ref_type == 'tag')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine version based on branch strategy
+        id: version
+        env:
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_HEAD_REF: ${{ github.event.head_ref }}
+          GITHUB_EVENT_PULL_REQUEST_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          source scripts/version.sh
+          determine_version \
+            "$GITHUB_REF_TYPE" \
+            "$GITHUB_REF" \
+            "$GITHUB_HEAD_REF" \
+            "$GITHUB_EVENT_PULL_REQUEST_HEAD_REF" \
+            "$GITHUB_REF_NAME"
+          echo "Determined version: ${{ steps.version.outputs.version }}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to dhi.io registry
+        run: |
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login dhi.io -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+
+      - name: Build and push CI/CD runner image
+        uses: docker/bake-action@v5
+        with:
+          files: cicd-runner/docker-bake.hcl
+          targets: cicd_runner
+          push: true
+          set: |
+            *.args.REGISTRY_URL=${{ env.REGISTRY_URL }}
+            *.args.ALPINE_BASE_VERSION=${{ env.ALPINE_BASE_VERSION }}
+            *.args.CICD_RUNNER_VERSION=${{ steps.version.outputs.version }}
+            cicd_runner.tags=${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+
+      - name: Output image version
+        run: |
+          echo "IMAGE_VERSION=${{ steps.version.outputs.version }}" >> $GITHUB_ENV
+          echo "Built image: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}"
+
+  trivy-scan:
+    name: Trivy Vulnerability Scan
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version based on branch strategy
+        id: version
+        env:
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_HEAD_REF: ${{ github.event.head_ref }}
+          GITHUB_EVENT_PULL_REQUEST_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          source scripts/version.sh
+          determine_version \
+            "$GITHUB_REF_TYPE" \
+            "$GITHUB_REF" \
+            "$GITHUB_HEAD_REF" \
+            "$GITHUB_EVENT_PULL_REQUEST_HEAD_REF" \
+            "$GITHUB_REF_NAME"
+
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+
+      - name: Pull image for scanning
+        run: |
+          docker pull ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: '${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          scanners: 'vuln'
+          skip-dirs: './.venv'
+
+      - name: Save Trivy table output to file
+        run: |
+          trivy image \
+            --skip-version-check \
+            --scanners vuln \
+            --skip-dirs "./.venv" \
+            --ignore-unfixed \
+            --format table \
+            --severity CRITICAL,HIGH,MEDIUM \
+            --output trivy-image-cicd-runner.txt \
+            '${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}' || true
+
+      - name: Generate Trivy reports (HTML, XML, SBOM, JSON)
+        env:
+          IMAGE_REF: ${{ env.CICD_RUNNER_IMAGE }}:${{ steps.version.outputs.version }}
+        run: |
+          if [[ -z "${IMAGE_REF}" ]]; then
+            echo "ERROR: IMAGE_REF is empty!" >&2
+            exit 1
+          fi
+          echo "INFO: Scanning image: ${IMAGE_REF}"
+          mkdir -p /tmp/trivy-templates
+          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl -o /tmp/trivy-templates/trivy-html.tpl
+          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/junit.tpl -o /tmp/trivy-templates/trivy-junit.tpl || true
+          TRIVY_OUTPUT_OPTS="--skip-version-check --scanners vuln --skip-dirs ./.venv --ignore-unfixed"
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner.html --format template --template /tmp/trivy-templates/trivy-html.tpl "${IMAGE_REF}" >/dev/null 2>outerr_html.log || true
+          [[ -f /tmp/trivy-templates/trivy-junit.tpl ]] && trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner.xml --format template --template /tmp/trivy-templates/trivy-junit.tpl "${IMAGE_REF}" >/dev/null 2>outerr_xml.log || true
+          trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-cicd-runner-sbom.json --format cyclonedx "${IMAGE_REF}" >/dev/null 2>outerr_sbom.log || true
+          trivy image ${TRIVY_OUTPUT_OPTS} --format json --output trivy-image-cicd-runner.json "${IMAGE_REF}" >/dev/null 2>outerr_json.log || true
+
+      - name: Upload Trivy reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-reports-cicd-runner-${{ steps.version.outputs.version }}
+          path: |
+            trivy-image-cicd-runner.txt
+            trivy-image-cicd-runner.json
+            trivy-image-cicd-runner.html
+            trivy-image-cicd-runner.xml
+            trivy-image-cicd-runner-sbom.json
+          retention-days: 30
