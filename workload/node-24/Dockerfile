@@ -58,4 +58,3 @@ RUN apk add --upgrade --no-cache \
       jq \
       zlib-dev && \
     rm -rf /var/cache/apk/*
-
