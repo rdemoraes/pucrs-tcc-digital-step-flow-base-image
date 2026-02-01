@@ -98,9 +98,9 @@ jobs:
           # Pick dev image digest when version ends with -dev, else prod image (first push).
           VERSION="${{ steps.version.outputs.version }}"
           if [[ "${VERSION}" == *-dev ]]; then
-            DIGEST=$(grep "pushing manifest for" build.log | grep -F "-dev@sha256:" | grep -oE 'sha256:[a-f0-9]+' | tail -1)
+            DIGEST=$(grep "pushing manifest for" build.log | grep -F -- "-dev@sha256:" | grep -oE 'sha256:[a-f0-9]+' | tail -1)
           else
-            DIGEST=$(grep "pushing manifest for" build.log | grep -vF "-dev@sha256:" | grep -oE 'sha256:[a-f0-9]+' | head -1)
+            DIGEST=$(grep "pushing manifest for" build.log | grep -vF -- "-dev@sha256:" | grep -oE 'sha256:[a-f0-9]+' | head -1)
           fi
           if [[ -z "${DIGEST}" ]]; then
             echo "ERROR: Could not extract digest from build.log (version=${VERSION})" >&2
