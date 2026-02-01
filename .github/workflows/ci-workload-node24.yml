@@ -92,9 +92,8 @@ jobs:
       - name: Get image digest
         id: digest
         run: |
-          echo "Logging in to Docker Hub to inspect image..."
           echo "${{ secrets.DOCKERHUB_PAT }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
-          DIGEST=$(docker buildx imagetools inspect "${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}" --format '{{.Digest}}')
+          DIGEST=$(docker buildx imagetools inspect "${{ env.BASE_IMAGE }}:${{ steps.version.outputs.version }}" 2>&1 | grep -E '^Digest:' | sed 's/Digest: *//')
           echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
           echo "Image digest: ${DIGEST}"
 
