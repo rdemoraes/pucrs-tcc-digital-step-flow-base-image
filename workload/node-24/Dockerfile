@@ -19,9 +19,9 @@ RUN addgroup --gid "$GID" appuser && \
             --ingroup "appuser" \
             --uid "${UID}" appuser
 
-# Refresh index and upgrade all packages; explicitly upgrade OpenSSL stack to 3.5.5-r0 (CVE-2025-15467, CVE-2025-69419)
+# Refresh index and upgrade all packages; bump libcrypto3/libssl3/openssl to 3.5.5-r0 (CVE-2025-15467, CVE-2025-69419)
 RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache libcrypto3=3.5.5-r0 libssl3=3.5.5-r0 openssl=3.5.5-r0 && \
+    apk add --no-cache -u libcrypto3=3.5.5-r0 libssl3=3.5.5-r0 openssl=3.5.5-r0 && \
     rm -rf /var/cache/apk/*
 
 # Install Node.js and npm with specific versions
