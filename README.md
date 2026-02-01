@@ -42,7 +42,7 @@ Contempla as ferramentas necessárias para build, push, atualização de manifes
 
 - **Workload Node 24:** altere arquivos em `workload/node-24/` (Dockerfile, docker-bake.hcl). O CI roda apenas quando há mudanças nesse diretório; após o push, a nova imagem é publicada e o Trivy escaneia pelo digest do build.
 - **CI/CD Runner:** altere arquivos em `cicd-runner/`. O CI roda apenas quando há mudanças nesse diretório.
-- Para testar localmente antes de pushar: use os comandos de build abaixo e, se quiser, rode Trivy na imagem local.
+- Para testar localmente antes de fazer o push: use os comandos de build abaixo e, se quiser, rode Trivy na imagem local.
 
 ## Build
 
