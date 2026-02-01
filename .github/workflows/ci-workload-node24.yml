@@ -93,11 +93,17 @@ jobs:
       - name: Get image digest from build output
         id: digest
         run: |
-          # Digest from the push we just did (avoids stale digest from imagetools inspect)
+          # Digest from the push we just did (avoids stale digest from imagetools inspect).
+          # Bake pushes base_image then base_image_dev; tags in log are NODEJS_VERSION (e.g. 24.13.0-r1, 24.13.0-r1-dev).
+          # Pick dev image digest when version ends with -dev, else prod image (first push).
           VERSION="${{ steps.version.outputs.version }}"
-          DIGEST=$(grep "pushing manifest for" build.log | grep -F "${VERSION}" | grep -oE 'sha256:[a-f0-9]+' | tail -1)
+          if [[ "${VERSION}" == *-dev ]]; then
+            DIGEST=$(grep "pushing manifest for" build.log | grep -F "-dev@sha256:" | grep -oE 'sha256:[a-f0-9]+' | tail -1)
+          else
+            DIGEST=$(grep "pushing manifest for" build.log | grep -vF "-dev@sha256:" | grep -oE 'sha256:[a-f0-9]+' | head -1)
+          fi
           if [[ -z "${DIGEST}" ]]; then
-            echo "ERROR: Could not extract digest from build.log for version ${VERSION}" >&2
+            echo "ERROR: Could not extract digest from build.log (version=${VERSION})" >&2
             grep 'pushing manifest' build.log || true
             exit 1
           fi
