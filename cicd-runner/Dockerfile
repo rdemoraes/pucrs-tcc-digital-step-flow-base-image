@@ -31,6 +31,7 @@ RUN apk add --upgrade --no-cache \
 FROM build-base AS downloader
 
 ARG KUSTOMIZE_VERSION=5.4.2
+ARG TRIVY_VERSION=0.68.2
 
 WORKDIR /downloads
 
@@ -42,8 +43,12 @@ RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/s
 RUN curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | tar -xz && \
     chmod +x kustomize
 
-# trivy
-RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /downloads
+# trivy (direct download; install script fails in Alpine due to mktemp/curl)
+RUN curl -sSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" -o trivy.tar.gz && \
+    tar -xzf trivy.tar.gz && \
+    find . -maxdepth 2 -name trivy -type f -exec mv {} . \; && \
+    chmod +x trivy && \
+    rm -rf trivy.tar.gz trivy_*
 
 # argocd
 RUN curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 && \
