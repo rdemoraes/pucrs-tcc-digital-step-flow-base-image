@@ -52,3 +52,26 @@ O pipeline CI/CD constrói e publica automaticamente as imagens quando:
 
 Esta imagem pode ser usada em GitHub Actions ou outros sistemas CI/CD para executar pipelines que requerem ferramentas como kubectl, kustomize, Docker, etc.
 
+### Rodar o runner localmente (debug)
+
+Para reproduzir o ambiente do CI (por exemplo, quando aparece `kustomize: not found`), use o mesmo container e usuário que o workflow:
+
+```bash
+# Shell interativo (mesmo contexto que o job: --user root)
+./run-local.sh
+
+# Dentro do container, verificar ferramentas:
+which kustomize
+/usr/local/bin/kustomize version
+ls -la /usr/local/bin/
+echo $PATH
+```
+
+Ou executar um comando direto:
+
+```bash
+./run-local.sh -- kustomize version
+```
+
+Imagem padrão: `raphaelmoraes/digital-step-flow-cicd-runner:0.0.1`. Para usar outra tag: `CICD_RUNNER_IMAGE=... ./run-local.sh`.
+
