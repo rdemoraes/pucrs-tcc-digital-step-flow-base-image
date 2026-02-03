@@ -172,6 +172,66 @@ jobs:
           trivy image ${TRIVY_OUTPUT_OPTS} -o trivy-image-base-sbom.json --format cyclonedx "${IMAGE_REF}" >/dev/null 2>outerr_sbom.log || true
           trivy image ${TRIVY_OUTPUT_OPTS} --format json --output trivy-image-base.json "${IMAGE_REF}" >/dev/null 2>outerr_json.log || true
 
+      - name: Generate Trivy Report Summary
+        if: always()
+        env:
+          IMAGE_REF: ${{ env.BASE_IMAGE }}@${{ needs.build.outputs.digest }}
+        run: |
+          echo "## Trivy Vulnerability Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ -f "trivy-image-base.json" ]]; then
+            CRITICAL=$(jq -r '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-image-base.json 2>/dev/null || echo "0")
+            HIGH=$(jq -r '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-image-base.json 2>/dev/null || echo "0")
+            MEDIUM=$(jq -r '[.Results[]?.Vulnerabilities[]? | select(.Severity == "MEDIUM")] | length' trivy-image-base.json 2>/dev/null || echo "0")
+            LOW=$(jq -r '[.Results[]?.Vulnerabilities[]? | select(.Severity == "LOW")] | length' trivy-image-base.json 2>/dev/null || echo "0")
+            TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW))
+            
+            IMAGE_NAME=$(jq -r '.ArtifactName // "unknown"' trivy-image-base.json 2>/dev/null || echo "${IMAGE_REF}")
+            IMAGE_TYPE=$(jq -r '.ArtifactType // "container"' trivy-image-base.json 2>/dev/null || echo "container")
+            
+            if [[ ${CRITICAL} -gt 0 ]] || [[ ${HIGH} -gt 0 ]]; then
+              STATUS_EMOJI="❌"
+              STATUS="Failed"
+            elif [[ ${TOTAL} -eq 0 ]]; then
+              STATUS_EMOJI="✅"
+              STATUS="Clean"
+            else
+              STATUS_EMOJI="⚠️"
+              STATUS="Warnings"
+            fi
+            
+            echo "### Scan Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Target | Type | Status | Critical | High | Medium | Low | Total |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|------|--------|----------|------|--------|-----|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| \`${IMAGE_REF}\` | ${IMAGE_TYPE} | ${STATUS_EMOJI} ${STATUS} | **${CRITICAL}** | **${HIGH}** | ${MEDIUM} | ${LOW} | ${TOTAL} |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [[ ${TOTAL} -eq 0 ]]; then
+              echo "✅ **No vulnerabilities detected**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### Vulnerability Breakdown" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              if [[ ${CRITICAL} -gt 0 ]]; then echo "- 🔴 **Critical:** ${CRITICAL}" >> $GITHUB_STEP_SUMMARY; fi
+              if [[ ${HIGH} -gt 0 ]]; then echo "- 🟠 **High:** ${HIGH}" >> $GITHUB_STEP_SUMMARY; fi
+              if [[ ${MEDIUM} -gt 0 ]]; then echo "- 🟡 **Medium:** ${MEDIUM}" >> $GITHUB_STEP_SUMMARY; fi
+              if [[ ${LOW} -gt 0 ]]; then echo "- 🟢 **Low:** ${LOW}" >> $GITHUB_STEP_SUMMARY; fi
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Reports" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Detailed reports are available in the workflow artifacts:" >> $GITHUB_STEP_SUMMARY
+            echo "- 📄 [HTML Report](artifact://trivy-reports-base-image-${{ needs.build.outputs.version }}/trivy-image-base.html)" >> $GITHUB_STEP_SUMMARY
+            echo "- 📊 [JSON Report](artifact://trivy-reports-base-image-${{ needs.build.outputs.version }}/trivy-image-base.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- 📋 [XML Report (JUnit)](artifact://trivy-reports-base-image-${{ needs.build.outputs.version }}/trivy-image-base.xml)" >> $GITHUB_STEP_SUMMARY
+            echo "- 📦 [SBOM (CycloneDX)](artifact://trivy-reports-base-image-${{ needs.build.outputs.version }}/trivy-image-base-sbom.json)" >> $GITHUB_STEP_SUMMARY
+            echo "- 📝 [Text Summary](artifact://trivy-reports-base-image-${{ needs.build.outputs.version }}/trivy-image-base.txt)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Warning:** JSON report not found. Unable to generate summary." >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Upload Trivy reports
         uses: actions/upload-artifact@v4
         if: always()
